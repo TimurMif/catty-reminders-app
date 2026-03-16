@@ -30,20 +30,9 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-def branch_exists_on_origin(branch):
-    """Check if branch exists on remote origin"""
-    try:
-        result = subprocess.run(
-            ["git", "ls-remote", "--heads", "origin", branch],
-            cwd=APP_DIR,
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        return branch in result.stdout
-    except Exception as e:
-        logging.error(f"Error checking branch existence: {e}")
-        return False
+# Функция больше не нужна, но оставим для совместимости или удалим
+# def branch_exists_on_origin(branch):
+#     ...
 
 class WebhookHandler(BaseHTTPRequestHandler):
 
@@ -142,16 +131,11 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 return
             logging.info(f"Fetch output: {result.stdout}")
 
-            # Determine which branch to deploy
-            target_branch = branch
-            if not branch_exists_on_origin(branch):
-                logging.warning(f"Branch '{branch}' not found on origin, falling back to 'lab1'")
-                target_branch = "lab1"
-                # Важно: сразу переходим к развёртыванию lab1
-            else:
-                logging.info(f"Branch '{branch}' exists on origin, will deploy it")
+            # Всегда развёртываем ветку lab1
+            target_branch = "lab1"
+            logging.info(f"Forcing deployment of lab1 branch (original push was to {branch})")
 
-            # Reset to the target branch
+            # Reset to lab1
             logging.info(f"Resetting to origin/{target_branch}")
             result = subprocess.run(
                 ["git", "reset", "--hard", f"origin/{target_branch}"],
@@ -162,19 +146,11 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 return
             logging.info(f"Reset output: {result.stdout}")
 
-            # Optionally create local branch for tracking (especially for test branches)
-            if target_branch != "lab1":
-                logging.info(f"Creating local branch '{target_branch}' tracking origin/{target_branch}")
-                subprocess.run(
-                    ["git", "checkout", "-B", target_branch, f"origin/{target_branch}"],
-                    capture_output=True, text=True, timeout=10
-                )
-            else:
-                # Ensure we are on lab1
-                subprocess.run(
-                    ["git", "checkout", "lab1"],
-                    capture_output=True, text=True, timeout=10
-                )
+            # Ensure we are on lab1
+            subprocess.run(
+                ["git", "checkout", "lab1"],
+                capture_output=True, text=True, timeout=10
+            )
 
             # Get current SHA
             sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
