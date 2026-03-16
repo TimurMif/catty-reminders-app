@@ -144,8 +144,27 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     logging.error("Не удалось подтянуть даже lab1, выход")
                     return
 
-            # Сбрасываем HEAD до нужной ветки
-            logging.info(f"Resetting to origin/{branch}")
+            # Создаём локальную ветку из FETCH_HEAD и переключаемся на неё
+            logging.info(f"Creating local branch '{branch}' from FETCH_HEAD")
+            checkout_result = subprocess.run(
+                ["git", "checkout", "-B", branch, "FETCH_HEAD"],
+                capture_output=True, text=True, timeout=30
+            )
+            if checkout_result.returncode != 0:
+                logging.error(f"Checkout failed: {checkout_result.stderr}")
+                # Пробуем жёсткий сброс как запасной вариант
+                logging.info("Falling back to reset --hard FETCH_HEAD")
+                reset_result = subprocess.run(
+                    ["git", "reset", "--hard", "FETCH_HEAD"],
+                    capture_output=True, text=True, timeout=30
+                )
+                if reset_result.returncode != 0:
+                    logging.error(f"Reset failed: {reset_result.stderr}")
+                    return
+            else:
+                logging.info(f"Checkout output: {checkout_result.stdout}")
+
+            # Дополнительный reset для гарантии (если checkout уже переключил, reset не повредит)
             reset_result = subprocess.run(
                 ["git", "reset", "--hard", f"origin/{branch}"],
                 capture_output=True, text=True, timeout=30
