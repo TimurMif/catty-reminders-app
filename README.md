@@ -141,3 +141,4 @@ To read the API docs, open the following pages:
 # Test real deploy ref Mon Mar 16 21:24:19 +04 2026
 # Test realy deploy ref Mon Mar 16 21:29:40 +04 2026
 # Final fix: universal branch support
+# Final fix: correct branch switching
