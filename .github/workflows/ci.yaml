@@ -1,8 +1,7 @@
 name: CI - Test and Build
 
 on:
-  push:
-    branches: [ main, master, develop, lab2 ]
+  push:                     # Запускать для всех push-событий в любую ветку
   pull_request:
     branches: [ main, master ]
 
