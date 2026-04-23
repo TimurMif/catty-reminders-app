@@ -1,4 +1,4 @@
-name: CD - Deploy to Server (Docker)
+name: CD - Deploy with Docker Compose
 
 on:
   release:
@@ -11,6 +11,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Copy docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ vars.PROXY_HOST }}
+          port: ${{ vars.SSH_PORT }}
+          username: ${{ vars.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml"
+          target: "/opt/catty-reminders/"
+          strip_components: 0
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -19,27 +30,34 @@ jobs:
           username: ${{ vars.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e
-            IMAGE_NAME="ghcr.io/timurmif/catty-reminders-app:latest"
-            CONTAINER_NAME="catty-app"
+            cd /opt/catty-reminders
 
+            # Логин в GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            docker stop $CONTAINER_NAME || true
-            docker rm $CONTAINER_NAME || true
+            # Создаём .env файл из секретов GitHub
+            cat > .env <<EOF
+            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+            MYSQL_USER=${{ secrets.MYSQL_USER }}
+            MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+            MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
+            DEPLOY_REF=${{ github.sha }}
+            EOF
 
-            docker pull $IMAGE_NAME
+            # Останавливаем старые контейнеры (если есть) и удаляем их
+            docker compose down --remove-orphans || true
 
-            docker run -d --name $CONTAINER_NAME -p 8181:8181 --restart unless-stopped \
-              -e DEPLOY_REF="${{ github.sha }}" \
-              $IMAGE_NAME
+            # Скачиваем свежие образы и запускаем стек
+            docker compose pull
+            docker compose up -d
 
-            sleep 3
+            # Ждём и проверяем работоспособность
+            sleep 5
             if curl -s --fail http://localhost:8181/login; then
-              echo "✅ Docker container started successfully"
+              echo "✅ Docker Compose stack started successfully"
             else
               echo "❌ Application failed to start"
-              docker logs $CONTAINER_NAME
+              docker compose logs
               exit 1
             fi
 
