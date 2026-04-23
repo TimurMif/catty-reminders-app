@@ -57,7 +57,7 @@ jobs:
       - name: Patch config for CI
         run: |
           sed -i 's/"host": "db"/"host": "127.0.0.1"/g' config.json
-          cat config.json   # для отладки
+          cat config.json
 
       - name: Start app
         env:
@@ -69,18 +69,14 @@ jobs:
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: pytest tests/ -v --junitxml=test_result.xml --cov=. --cov-report=xml
+        run: pytest tests/ -v --junitxml=test_result.xml
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test_result
-          path: |
-            test_result.xml
-            coverage.xml
-            htmlcov/
-          if-no-files-found: warn
+          path: test_result.xml
 
   docker-build:
     runs-on: ubuntu-latest
