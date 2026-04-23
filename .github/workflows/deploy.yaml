@@ -32,31 +32,25 @@ jobs:
           script: |
             cd /opt/catty-reminders
 
-            # Логин в GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # Создаём .env файл из секретов GitHub
             cat > .env <<EOF
             MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
             MYSQL_USER=${{ secrets.MYSQL_USER }}
             MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
             MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
             DEPLOY_REF=${{ github.sha }}
+            APP_IMAGE=ghcr.io/timurmif/catty-reminders-app:${{ github.sha }}
             EOF
 
-            # Останавливаем старые контейнеры (если есть) и удаляем их
-            docker compose down --remove-orphans || true
+            docker compose --env-file .env pull
+            docker compose --env-file .env up -d --force-recreate --remove-orphans
 
-            # Скачиваем свежие образы и запускаем стек
-            docker compose pull
-            docker compose up -d
-
-            # Ждём и проверяем работоспособность
             sleep 5
             if curl -s --fail http://localhost:8181/login; then
-              echo "✅ Docker Compose stack started successfully"
+              echo "✅ Docker Compose stack started"
             else
-              echo "❌ Application failed to start"
+              echo "❌ Failed"
               docker compose logs
               exit 1
             fi
@@ -65,4 +59,4 @@ jobs:
         run: |
           sleep 5
           curl -s --fail "http://app.${{ vars.ID }}.${{ vars.PROXY_HOST }}/login" || exit 1
-          echo "✅ Application is accessible at http://app.${{ vars.ID }}.${{ vars.PROXY_HOST }}"
+          echo "✅ Application accessible"
