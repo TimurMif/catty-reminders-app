@@ -83,9 +83,8 @@ jobs:
     needs: pipeline
     if: success()
     permissions:
-      contents: read
+      contents: write
       packages: write
-      contents: write  # 👈 Нужно для создания релизов
 
     steps:
       - name: Checkout repository
