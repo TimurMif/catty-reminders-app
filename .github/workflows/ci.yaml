@@ -90,6 +90,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Get commit hash
+        id: vars
+        run: |
+          COMMIT_HASH=$(git rev-parse HEAD)
+          echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -110,5 +116,5 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: |
+            ghcr.io/timurmif/catty-reminders-app:${{ steps.vars.outputs.commit_hash }}
             ghcr.io/timurmif/catty-reminders-app:latest
-            ghcr.io/timurmif/catty-reminders-app:${{ github.sha }}
