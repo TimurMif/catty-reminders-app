@@ -1,6 +1,10 @@
 name: CD - Deploy with Docker Compose
 
 on:
+  push:
+    branches:
+      - lab4
+      - lab4_autotests*
   release:
     types: [published]
 
@@ -11,11 +15,24 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get latest commit from branch
+      id: get-sha
+      run: |
+        # Получаем SHA последнего коммита в текущей ветке
+        LATEST_SHA=$(git rev-parse HEAD)
+        echo "sha=$LATEST_SHA" >> $GITHUB_OUTPUT
+        echo "Latest SHA in this branch: $LATEST_SHA"
+
+    - name: Wait 60 seconds for CI to build image
+      run: sleep 60
 
     - name: Create .env file
       run: |
-        echo "APP_IMAGE=ghcr.io/timurmif/catty-reminders-app:${{ github.sha }}" > .env
-        echo "DEPLOY_REF=${{ github.sha }}" >> .env
+        echo "APP_IMAGE=ghcr.io/timurmif/catty-reminders-app:${{ steps.get-sha.outputs.sha }}" > .env
+        echo "DEPLOY_REF=${{ steps.get-sha.outputs.sha }}" >> .env
         echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
         echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .env
         echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .env
@@ -52,8 +69,17 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd /opt/catty-reminders
+          
+          # Остановить и удалить старые контейнеры
+          docker compose down --remove-orphans || true
+          
+          # Логин в GHCR
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker compose up -d --pull always --remove-orphans --force-recreate
+          
+          # Подтянуть свежий образ и пересоздать контейнеры
+          docker compose pull
+          docker compose up -d --force-recreate
+          
           sleep 5
           curl -s --fail http://localhost:8181/login || exit 1
 
