@@ -9,9 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
     - name: Create .env file
       run: |
-        echo "APP_IMAGE=ghcr.io/timurmif/catty-reminders-app:latest" > .env
+        echo "APP_IMAGE=ghcr.io/timurmif/catty-reminders-app:${{ github.sha }}" > .env
         echo "DEPLOY_REF=${{ github.sha }}" >> .env
         echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
         echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .env
