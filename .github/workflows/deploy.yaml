@@ -56,8 +56,20 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd /opt/catty-reminders
+          
+          # Остановить и удалить старые контейнеры
+          docker compose down --remove-orphans || true
+          
+          # Удалить старый образ, чтобы точно скачать свежий
+          docker rmi $(docker images ghcr.io/timurmif/catty-reminders-app -q) 2>/dev/null || true
+          
+          # Логин в GHCR
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker compose up -d --pull always --remove-orphans --force-recreate
+          
+          # Подтянуть свежий образ и пересоздать контейнеры
+          docker compose pull
+          docker compose up -d --force-recreate
+          
           sleep 5
           curl -s --fail http://localhost:8181/login || exit 1
 
