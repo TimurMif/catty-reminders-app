@@ -32,19 +32,23 @@ jobs:
             set -e
             cd /opt/catty-reminders
             
-            # Подготовка переменных
+            # Приводим логин к нижнему регистру для Docker
             OWNER=$(echo "${{ github.repository_owner }}" | tr "[:upper:]" "[:lower:]")
             DEPLOY_SHA="${{ github.sha }}"
             IMAGE="ghcr.io/$OWNER/catty-reminders-app:$DEPLOY_SHA"
             
-            # Создаем .env на лету
-            printf "IMAGE=%s\nDEPLOY_REF=%s\n" "$IMAGE" "$DEPLOY_SHA" > .env
+            # Создаем .env файл для Docker Compose
+            printf "IMAGE=%s\n" "$IMAGE" > .env
+            printf "DEPLOY_REF=%s\n" "$DEPLOY_SHA" >> .env
+            printf "MYSQL_ROOT_PASSWORD=%s\n" "${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
+            printf "MYSQL_DATABASE=%s\n" "${{ secrets.MYSQL_DATABASE }}" >> .env
+            printf "MYSQL_USER=%s\n" "${{ secrets.MYSQL_USER }}" >> .env
+            printf "MYSQL_PASSWORD=%s\n" "${{ secrets.MYSQL_PASSWORD }}" >> .env
             
-            # Авторизация и запуск
+            # Авторизация в GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Обновление и перезапуск
             docker pull "$IMAGE"
-            
-            # Очистка старых контейнеров (чтобы избежать конфликтов имен)
             docker ps -aq --filter "name=catty" | xargs -r docker rm -f
-            
             docker compose up -d --force-recreate --remove-orphans
