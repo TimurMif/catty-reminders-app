@@ -1,42 +1,40 @@
 services:
-  catty-app:
-    image: ${APP_IMAGE}
-    container_name: catty-app
-    restart: unless-stopped
-    environment:
-      - DEPLOY_REF=${DEPLOY_REF}
-      - MYSQL_HOST=db
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-    ports:
-      - "8181:8181"
-    depends_on:
-      - db
-    networks:
-      - catty-network
-
   db:
-    image: mysql:8.0
+    image: mysql:8
     container_name: catty-db
     restart: unless-stopped
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+      MYSQL_USER: ${{ secrets.MYSQL_USER }}
+      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
     volumes:
       - db_data:/var/lib/mysql
-    networks:
-      - catty-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-      timeout: 20s
-      retries: 10
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${{ secrets.MYSQL_ROOT_PASSWORD }}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
-networks:
-  catty-network:
-    driver: bridge
+  app:
+    image: ${IMAGE:-ghcr.io/${{ github.repository_owner }}/catty-reminders-app:lab4}
+    container_name: catty-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8181:8181"
+    environment:
+      DEPLOY_REF: ${DEPLOY_REF:-NA}
+      # Переменные для подключения к БД (если приложение их использует)
+      DB_HOST: db
+      DB_USER: ${{ secrets.MYSQL_USER }}
+      DB_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+      DB_NAME: ${{ secrets.MYSQL_DATABASE }}
+    volumes:
+      - ./config.json:/app/config.json:ro
 
 volumes:
   db_data:
