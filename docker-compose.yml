@@ -28,7 +28,7 @@ services:
       - "8181:8181"
     environment:
       DEPLOY_REF: ${DEPLOY_REF:-NA}
-      # Переменные для подключения к БД (если приложение их использует)
+      # Переменные для подключения к БД если приложение их использует)
       DB_HOST: db
       DB_USER: ${{ secrets.MYSQL_USER }}
       DB_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
