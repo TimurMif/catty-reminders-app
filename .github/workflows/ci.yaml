@@ -27,9 +27,9 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: mypass
-          MYSQL_DATABASE: catty_reminders
+          MYSQL_DATABASE: catty_db
           MYSQL_USER: catty_user
-          MYSQL_PASSWORD: catty_password
+          MYSQL_PASSWORD: MyStrongUserPass456!
         ports:
           - 3306:3306
         options: >-
